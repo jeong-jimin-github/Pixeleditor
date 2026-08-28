@@ -75,17 +75,9 @@ jobs:
           if-no-files-found: error
 
   build-macos:
-    name: Build darwin-${{ matrix.goarch }}
+    name: Build darwin-arm64
     needs: test
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-latest
-            goarch: arm64
-          - runner: macos-13
-            goarch: amd64
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -96,10 +88,10 @@ jobs:
           CGO_ENABLED: "1"
         run: |
           mkdir -p dist
-          go build -trimpath -ldflags "-s -w" -o dist/pixeleditor-darwin-${{ matrix.goarch }} .
+          go build -trimpath -ldflags "-s -w" -o dist/pixeleditor-darwin-arm64 .
       - uses: actions/upload-artifact@v4
         with:
-          name: pixeleditor-darwin-${{ matrix.goarch }}
+          name: pixeleditor-darwin-arm64
           path: dist/*
           if-no-files-found: error
 
@@ -130,4 +122,3 @@ jobs:
             | `pixeleditor-windows-amd64.exe` | Windows x64 |
             | `pixeleditor-linux-amd64` | Linux x64 |
             | `pixeleditor-darwin-arm64` | macOS Apple Silicon |
-            | `pixeleditor-darwin-amd64` | macOS Intel |

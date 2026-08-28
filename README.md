@@ -38,5 +38,5 @@ Needs CGO (a C compiler). On Windows use MinGW; on Linux install `gcc`, `libgl1-
 Every push to `main` runs [`.github/workflows/release.yml`](.github/workflows/release.yml):
 
 1. `go test ./internal/doc`
-2. Build Windows / Linux / macOS binaries
+2. Build Windows x64, Linux x64, and macOS Apple Silicon binaries
 3. Publish a GitHub Release tagged `build-<run number>`
