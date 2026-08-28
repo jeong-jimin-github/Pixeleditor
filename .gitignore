@@ -1,0 +1,29 @@
+# Binaries
+pixeleditor
+pixeleditor.exe
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.syso
+
+# Build output
+dist/
+artifacts/
+
+# Go
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python leftover
+__pycache__/
+*.pyc

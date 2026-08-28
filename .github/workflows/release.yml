@@ -1,0 +1,132 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+      - name: Test core logic
+        run: go test ./internal/doc
+
+  build-windows:
+    name: Build windows-amd64
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          path-type: inherit
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-pkg-config
+      - name: Build
+        shell: msys2 {0}
+        env:
+          CGO_ENABLED: "1"
+        run: |
+          mkdir -p dist
+          go build -trimpath -ldflags "-s -w -H windowsgui" -o dist/pixeleditor-windows-amd64.exe .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pixeleditor-windows-amd64
+          path: dist/*
+          if-no-files-found: error
+
+  build-linux:
+    name: Build linux-amd64
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc pkg-config libgl1-mesa-dev xorg-dev libxkbcommon-dev
+      - name: Build
+        env:
+          CGO_ENABLED: "1"
+        run: |
+          mkdir -p dist
+          go build -trimpath -ldflags "-s -w" -o dist/pixeleditor-linux-amd64 .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pixeleditor-linux-amd64
+          path: dist/*
+          if-no-files-found: error
+
+  build-macos:
+    name: Build darwin-${{ matrix.goarch }}
+    needs: test
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-latest
+            goarch: arm64
+          - runner: macos-13
+            goarch: amd64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+      - name: Build
+        env:
+          CGO_ENABLED: "1"
+        run: |
+          mkdir -p dist
+          go build -trimpath -ldflags "-s -w" -o dist/pixeleditor-darwin-${{ matrix.goarch }} .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pixeleditor-darwin-${{ matrix.goarch }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: GitHub Release
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: List artifacts
+        run: ls -la artifacts
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Build ${{ github.run_number }}
+          generate_release_notes: true
+          files: artifacts/*
+          body: |
+            Automated desktop build from `${{ github.sha }}`.
+
+            | File | Platform |
+            | --- | --- |
+            | `pixeleditor-windows-amd64.exe` | Windows x64 |
+            | `pixeleditor-linux-amd64` | Linux x64 |
+            | `pixeleditor-darwin-arm64` | macOS Apple Silicon |
+            | `pixeleditor-darwin-amd64` | macOS Intel |
